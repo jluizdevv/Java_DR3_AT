@@ -24,7 +24,7 @@ public class UserInsertionTest {
         String randomUserName = randomUserData.path("results").path(0).path("name").path("first").asText();
 
 
-        String yourApiUrl = "http://localhost:4567/usuarios";  // Substitua pela URL real da sua API
+        String yourApiUrl = "http://localhost:4567/usuarios";
 
 
         String requestBody = "{\"nome\": \"" + randomUserName + "\"}";
@@ -58,10 +58,10 @@ public class UserInsertionTest {
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setDoOutput(true);
 
-        // Enviar os dados
+
         connection.getOutputStream().write(data.getBytes("UTF-8"));
 
-        // Obter o código de resposta
+
         return connection.getResponseCode();
     }
 }

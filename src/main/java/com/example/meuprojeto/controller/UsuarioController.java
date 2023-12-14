@@ -6,9 +6,7 @@ import com.example.meuprojeto.service.UsuarioService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import spark.Request;
 import spark.Response;
-import spark.Route;
 
-import java.io.IOException;
 import java.util.List;
 
 import static spark.Spark.*;
@@ -18,83 +16,74 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
     private final ObjectMapper objectMapper;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, ObjectMapper objectMapper) {
         this.usuarioService = usuarioService;
-
-        // Inicializa objectMapper no construtor
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     public void iniciarSpark() {
-        // Configuração do endpoint para listagem de usuários
-        get("/usuarios", respostasRequisicoes);
 
-        // Resto do código...
+        get("/usuarios", this::listarUsuarios, objectMapper::writeValueAsString);
+
+
+        get("/usuarios/:id", this::buscarUsuario, objectMapper::writeValueAsString);
+
+
+        delete("/usuarios/:id", this::excluirUsuario, objectMapper::writeValueAsString);
+
+
+        post("/usuarios", this::inserirUsuario, objectMapper::writeValueAsString);
+
+
+        put("/usuarios", this::atualizarUsuario, objectMapper::writeValueAsString);
     }
 
-    private Route respostasRequisicoes = (Request request, Response response) -> {
-        response.type("application/json");
+    private List<UsuarioDTOOutput> listarUsuarios(Request request, Response response) {
+        List<UsuarioDTOOutput> usuarios = usuarioService.listar();
+        response.status(200);
+        return usuarios;
+    }
 
-        // Certifique-se de que usuarioService está inicializado antes de utilizá-lo
-        if (usuarioService == null) {
-            response.status(500);  // Internal Server Error
-            return "Erro interno do servidor: usuarioService não inicializado";
-        }
-
-        // Restante do código...
-
-        // Endpoint para listagem de usuários
-        if (request.pathInfo().equals("/usuarios") && request.requestMethod().equals("GET")) {
-            List<UsuarioDTOOutput> usuarios = usuarioService.listar();
+    private UsuarioDTOOutput buscarUsuario(Request request, Response response) {
+        int id = Integer.parseInt(request.params(":id"));
+        UsuarioDTOOutput usuario = usuarioService.buscar(id);
+        if (usuario != null) {
             response.status(200);
-            return objectMapper.writeValueAsString(usuarios);
+            return usuario;
+        } else {
+            response.status(404);
+            return null;
         }
+    }
 
-        // Endpoint para busca de um usuário pelo ID
-        if (request.pathInfo().matches("/usuarios/\\d+") && request.requestMethod().equals("GET")) {
-            int id = Integer.parseInt(request.params(":id"));
-            UsuarioDTOOutput usuario = usuarioService.buscar(id);
-            if (usuario != null) {
-                response.status(200);
-                return usuario;
-            } else {
-                response.status(404);
-                return "Usuário não encontrado";
-            }
-        }
+    private String excluirUsuario(Request request, Response response) {
+        int id = Integer.parseInt(request.params(":id"));
+        usuarioService.excluir(id);
+        response.status(204);
+        return "";
+    }
 
-        // Endpoint para exclusão de um usuário pelo ID
-        if (request.pathInfo().matches("/usuarios/\\d+") && request.requestMethod().equals("DELETE")) {
-            int id = Integer.parseInt(request.params(":id"));
-            usuarioService.excluir(id);
-            response.status(204);
+    private String inserirUsuario(Request request, Response response) {
+        try {
+            UsuarioDTOInput usuarioDTOInput = objectMapper.readValue(request.body(), UsuarioDTOInput.class);
+            usuarioService.inserir(usuarioDTOInput);
+            response.status(201);
             return "";
+        } catch (Exception e) {
+            response.status(400);
+            return "Corpo da solicitação JSON inválido";
         }
+    }
 
-        // Endpoint para inserção de um novo usuário
-        if (request.pathInfo().equals("/usuarios") && request.requestMethod().equals("POST")) {
-            try {
-                UsuarioDTOInput usuarioDTOInput = objectMapper.readValue(request.body(), UsuarioDTOInput.class);
-                usuarioService.inserir(usuarioDTOInput);
-                response.status(201);
-                return "";
-            } catch (IOException e) {
-                response.status(400);  // Bad Request
-                return "Erro ao processar o corpo da solicitação JSON";
-            }
-        }
-
-        // Endpoint para atualização de um usuário
-        if (request.pathInfo().equals("/usuarios") && request.requestMethod().equals("PUT")) {
+    private String atualizarUsuario(Request request, Response response) {
+        try {
             UsuarioDTOInput usuarioDTOInput = objectMapper.readValue(request.body(), UsuarioDTOInput.class);
             usuarioService.alterar(usuarioDTOInput);
             response.status(204);
             return "";
+        } catch (Exception e) {
+            response.status(400);
+            return "Corpo da solicitação JSON inválido";
         }
-
-        // Outros endpoints podem ser adicionados conforme necessário
-
-        response.status(404);
-        return "Endpoint não encontrado";
-    };
+    }
 }

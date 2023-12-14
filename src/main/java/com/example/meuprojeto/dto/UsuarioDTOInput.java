@@ -7,4 +7,7 @@ public class UsuarioDTOInput {
     private int id;
     private String nome;
     private String senha;
+
+    public void setEmail(String mail) {
+    }
 }
